@@ -1,0 +1,51 @@
+name: "Convert Submission Issue to JSON Entry"
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  add_entry:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Extract issue content
+        id: parse
+        run: |
+          TITLE=$(echo "${{ github.event.issue.body }}" | sed -n 's/Title: \(.*\)/\1/p')
+          DESCRIPTION=$(echo "${{ github.event.issue.body }}" | sed -n '/Description:/,/Tags:/p' | sed '1d;$d')
+          TAGS=$(echo "${{ github.event.issue.body }}" | sed -n 's/Tags: \(.*\)/\1/p')
+          LINK=$(echo "${{ github.event.issue.body }}" | sed -n 's/File link (optional): \(.*\)/\1/p')
+
+          TITLE_ESCAPED=$(printf '%s' "$TITLE" | jq -Rr @json)
+          DESCRIPTION_ESCAPED=$(printf '%s' "$DESCRIPTION" | jq -Rr @json)
+          TAGS_JSON=$(printf '%s' "$TAGS" | jq -Rr 'split(",") | map(. | gsub("^\\s+|\\s+$";""))')
+          LINK_ESCAPED=$(printf '%s' "$LINK" | jq -Rr @json)
+
+          echo "title=$TITLE_ESCAPED" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION_ESCAPED" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS_JSON" >> $GITHUB_OUTPUT
+          echo "link=$LINK_ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Add entry to index.json
+        run: |
+          jq ". + [{
+            \"title\": ${{ steps.parse.outputs.title }},
+            \"description\": ${{ steps.parse.outputs.description }},
+            \"tags\": ${{ steps.parse.outputs.tags }},
+            \"link\": ${{ steps.parse.outputs.link }}
+          }]" index.json > new.json
+
+          mv new.json index.json
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Added new archive entry"
