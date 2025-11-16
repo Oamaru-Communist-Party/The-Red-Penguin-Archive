@@ -1,64 +1,83 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>The Red Penguin Archive</title>
+const repoOwner = "oamaru-communist-party";
+const repoName = "The-Red-Penguin-Archive";
 
-  <style>
-    /* Submit Button */
-    #submit-btn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: #c62828;
-      color: white;
-      padding: 10px 16px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: bold;
+async function fetchEntries() {
+    const apiURL = `https://api.github.com/repos/${repoOwner}/${repoName}/issues?state=open&per_page=100`;
+
+    try {
+        const response = await fetch(apiURL);
+        const issues = await response.json();
+
+        // Convert issues → entries
+        return issues.map(issue => {
+            const body = issue.body || "";
+            
+            // Extract Description:
+            const descMatch = body.match(/Description\s*\n(.+)/i);
+            const description = descMatch ? descMatch[1].trim() : "No description.";
+
+            // Extract Tags:
+            const tagMatch = body.match(/Tags\s*\n(.+)/i);
+            const tags = tagMatch ? tagMatch[1].split(",").map(t => t.trim()) : [];
+
+            return {
+                title: issue.title,
+                description,
+                tags,
+                link: issue.html_url
+            };
+        });
+
+    } catch (err) {
+        console.error("Error fetching entries:", err);
+        return [];
     }
-    #submit-btn:hover {
-      background: #8e0000;
+}
+
+async function displayEntries(entries) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    if (entries.length === 0) {
+        resultsDiv.innerHTML = "<p>No entries found.</p>";
+        return;
     }
 
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-    }
+    entries.forEach(entry => {
+        const card = document.createElement("div");
+        card.style.marginBottom = "20px";
+        card.style.padding = "10px";
+        card.style.border = "1px solid #ccc";
+        card.style.borderRadius = "8px";
 
-    #searchBar {
-      width: 300px;
-      padding: 8px;
-    }
-  </style>
-</head>
+        card.innerHTML = `
+            <h2>${entry.title}</h2>
+            <p>${entry.description}</p>
+            <p><strong>Tags:</strong> ${entry.tags.join(", ")}</p>
+            <a href="${entry.link}" target="_blank">Open</a>
+        `;
 
-<body>
-
-  <!-- Top-right submission button -->
-  <a id="submit-btn" 
-     href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/new?template=archive-entry.yml">
-    Submit Entry
-  </a>
-
-  <h1>The Red Penguin Archive</h1>
-
-  <!-- Search Bar -->
-  <input type="text" id="searchBar" placeholder="Search...">
-  <button onclick="performSearch()">Search</button>
-
-  <div id="results"></div>
-
-  <script src="script.js"></script>
-
-  <script>
-    // Press Enter to search
-    document.getElementById("searchBar").addEventListener("keypress", function(e) {
-        if (e.key === "Enter") {
-            performSearch();
-        }
+        resultsDiv.appendChild(card);
     });
-  </script>
+}
 
-</body>
-</html>
+let allEntries = [];
+
+// Search function
+async function performSearch() {
+    const query = document.getElementById("searchBar").value.toLowerCase();
+
+    const filtered = allEntries.filter(entry =>
+        entry.title.toLowerCase().includes(query) ||
+        entry.description.toLowerCase().includes(query) ||
+        entry.tags.join(" ").toLowerCase().includes(query)
+    );
+
+    displayEntries(filtered);
+}
+
+// Load entries when page loads
+window.onload = async () => {
+    allEntries = await fetchEntries();
+    displayEntries(allEntries);
+};
