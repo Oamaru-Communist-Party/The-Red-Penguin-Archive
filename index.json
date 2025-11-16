@@ -1,9 +1,8 @@
 [
   {
-    "title": "Test Document",
-    "description": "TEST 1.",
-    "tags": ["demo", "test"],
-    "link": "https://example.com"
+    "title": "Test File",
+    "description": "This is a test entry to make sure search works.",
+    "tags": ["test", "example"],
+    "link": "#"
   }
 ]
-[]
