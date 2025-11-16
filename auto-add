@@ -1,0 +1,43 @@
+name: Add Submission to Archive
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add_file:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Parse Issue
+        id: parse
+        run: |
+          BODY=$(echo "${{ github.event.issue.body }}" | jq -Rs .)
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+      - name: Add entry to JSON index
+        run: |
+          NEW_ENTRY=$(cat <<EOF
+{
+  "title": "User Submission",
+  "description": ${BODY},
+  "tags": ["user"],
+  "link": "#"
+}
+EOF
+)
+
+          # Append entry to index.json
+          jq ". + [ $NEW_ENTRY ]" index.json > index_new.json
+          mv index_new.json index.json
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-added submission #${{ github.event.issue.number }}"
+
+      - name: Close Issue
+        uses: peter-evans/close-issue@v2
