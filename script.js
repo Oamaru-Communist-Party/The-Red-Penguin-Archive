@@ -1,32 +1,37 @@
-let archive = [];
+function performSearch() {
+    const query = document.getElementById("searchBar").value.toLowerCase();
 
-async function loadArchive() {
-  const response = await fetch('index.json');
-  archive = await response.json();
+    fetch("index.json")
+        .then(response => response.json())
+        .then(data => {
+            const results = data.filter(item =>
+                item.title.toLowerCase().includes(query) ||
+                item.description.toLowerCase().includes(query) ||
+                item.tags.join(" ").toLowerCase().includes(query)
+            );
+
+            displayResults(results);
+        });
 }
 
-function searchArchive() {
-  const query = document.getElementById('search').value.toLowerCase();
-  const resultsDiv = document.getElementById('results');
-  resultsDiv.innerHTML = "";
+function displayResults(results) {
+    const container = document.getElementById("results");
+    container.innerHTML = "";
 
-  const results = archive.filter(entry =>
-    entry.title.toLowerCase().includes(query) ||
-    entry.tags.join(" ").toLowerCase().includes(query) ||
-    entry.description.toLowerCase().includes(query)
-  );
+    if (results.length === 0) {
+        container.innerHTML = "<p>No results found.</p>";
+        return;
+    }
 
-  results.forEach(entry => {
-    const div = document.createElement('div');
-    div.innerHTML = `
-      <h3>${entry.title}</h3>
-      <p>${entry.description}</p>
-      <p><strong>Tags:</strong> ${entry.tags.join(", ")}</p>
-      <a href="${entry.link}" target="_blank">Open File</a>
-      <hr>
-    `;
-    resultsDiv.appendChild(div);
-  });
+    results.forEach(item => {
+        const div = document.createElement("div");
+        div.innerHTML = `
+            <h2>${item.title}</h2>
+            <p>${item.description}</p>
+            <p><strong>Tags:</strong> ${item.tags.join(", ")}</p>
+            <a href="${item.link}">Open</a>
+            <hr>
+        `;
+        container.appendChild(div);
+    });
 }
-
-loadArchive();
