@@ -24,3 +24,14 @@
   </script>
 </body>
 </html>
+<h2>Submit a New Archive Entry</h2>
+
+<form action="https://github.com/{{your user}}/{{your repo}}/issues/new" method="get" target="_blank">
+  <input type="hidden" name="title" value="New Submission">
+
+  <label>Description:</label><br>
+  <textarea name="body" rows="6" cols="50"
+    placeholder="Write details here..."></textarea><br><br>
+
+  <button type="submit">Submit to Archive</button>
+</form>
