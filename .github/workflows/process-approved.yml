@@ -17,37 +17,30 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Capture issue fields safely
-        id: extract
-        shell: bash
+      - name: Build entry JSON safely
+        id: entry
         run: |
-          TITLE=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')
-          BODY=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')
-          URL=$(jq -r '.issue.html_url' <<< '${{ toJson(github.event) }}')
+          title="${{ github.event.issue.title }}"
+          body="${{ github.event.issue.body }}"
+          url="${{ github.event.issue.html_url }}"
 
-          # Escape newlines for JSON safety
-          BODY_ESCAPED=$(printf '%s' "$BODY" | jq -Rs .)
-
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
-          echo "body_escaped=$BODY_ESCAPED" >> $GITHUB_OUTPUT
-          echo "url=$URL" >> $GITHUB_OUTPUT
+          # Build JSON entry safely using jq — no shell escaping problems
+          echo "$(jq -n \
+            --arg title "$title" \
+            --arg description "$body" \
+            --arg link "$url" \
+            '{title: $title, description: $description, tags: [], link: $link}')" \
+            > entry.json
 
       - name: Append entry to index.json
-        shell: bash
         run: |
-          jq --arg title "${{ steps.extract.outputs.title }}" \
-             --argjson body "${{ steps.extract.outputs.body_escaped }}" \
-             --arg link "${{ steps.extract.outputs.url }}" \
-             '. += [{ title: $title, description: $body, tags: [], link: $link }]' \
-             index.json > new.json
-
+          jq ". + [$(cat entry.json)]" index.json > new.json
           mv new.json index.json
 
       - name: Commit update
-        shell: bash
         run: |
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
           git add index.json
-          git commit -m "Add approved submission: ${{ steps.extract.outputs.title }}"
+          git commit -m "Add approved submission: ${{ github.event.issue.title }}" || echo "No changes"
           git push
