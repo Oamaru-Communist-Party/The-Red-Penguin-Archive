@@ -2,7 +2,16 @@
   {
     "title": "Test File",
     "description": "This is a test entry to make sure search works.",
-    "tags": ["test", "example"],
+    "tags": [
+      "test",
+      "example"
+    ],
     "link": "#"
+  },
+  {
+    "title": "New Archive Entry: <Newspapers>",
+    "description": "### Title\n\nOCP Newspapers via Proton\n\n### Description\n\nThis is the file that takes you to the proton file containing the early newspapers. This was the initial way of publishing the newspapers by The Red Penguin.\n\n### Tags\n\nred-penguin, OCP, newspaper, proton\n\n### File link (optional)\n\nhttps://drive.proton.me/urls/7A9PJVG8F0#zeETN3l4toZx",
+    "tags": [],
+    "link": "https://github.com/Oamaru-Communist-Party/The-Red-Penguin-Archive/issues/4"
   }
 ]
