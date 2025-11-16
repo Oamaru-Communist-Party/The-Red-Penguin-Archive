@@ -27,8 +27,7 @@ jobs:
       - name: Create entry page
         run: |
           mkdir -p entries
-
-          cat > entries/entry-${{ steps.extract.outputs.number }}.html << EOF
+          cat > entries/entry-${{ steps.extract.outputs.number }}.html << 'EOF'
 <!DOCTYPE html>
 <html>
 <head>
@@ -57,7 +56,6 @@ jobs:
       View Original Issue
     </a>
   </p>
-
 </body>
 </html>
 EOF
