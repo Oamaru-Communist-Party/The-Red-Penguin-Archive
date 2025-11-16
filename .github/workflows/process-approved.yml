@@ -6,8 +6,7 @@ on:
 
 jobs:
   add_to_index:
-    # only run when the label added is "Approved"
-    if: ${{ github.event.label.name == 'Approved' }}
+    if: github.event.label.name == 'Approved'
     runs-on: ubuntu-latest
 
     permissions:
@@ -20,22 +19,25 @@ jobs:
 
       - name: Extract issue data
         id: extract
+        shell: bash
         run: |
           echo "title=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
           echo "body=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
           echo "number=$(jq -r '.issue.number' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
 
       - name: Create entry page
+        shell: bash
         run: |
           mkdir -p entries
-          cat > "entries/entry-${{ steps.extract.outputs.number }}.html" <<'EOF'
+
+          cat << 'EOF' > entries/entry-${{ steps.extract.outputs.number }}.html
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>${{ steps.extract.outputs.title }}</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
+    body { font-family: Arial; margin: 40px; }
     .banner { 
       background: #c62828; 
       color: white; 
@@ -50,13 +52,11 @@ jobs:
 
   <h1>${{ steps.extract.outputs.title }}</h1>
 
-  <div>
-    ${{ steps.extract.outputs.body }}
-  </div>
+  <p>${{ steps.extract.outputs.body }}</p>
 
-  <p><b>Original Issue:</b>
-    <a href="https://github.com/${{ github.repository }}/issues/${{ steps.extract.outputs.number }}">
-      View on GitHub
+  <p><b>Issue Link:</b>
+    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/${{ steps.extract.outputs.number }}">
+      View Original Issue
     </a>
   </p>
 
@@ -65,8 +65,9 @@ jobs:
 EOF
 
       - name: Append entry to index.json
+        shell: bash
         run: |
-          page="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/entries/entry-${{ steps.extract.outputs.number }}.html"
+          page="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/entries/entry-${{ steps.extract.outputs.number }}.html"
 
           entry=$(jq -n \
             --arg title "${{ steps.extract.outputs.title }}" \
@@ -78,10 +79,10 @@ EOF
           mv new.json index.json
 
       - name: Commit update
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
           git add entries index.json
-          git commit -m "Add Approved entry: #${{ steps.extract.outputs.number }}" || echo "No changes to commit"
+          git commit -m "Add approved entry: #${{ steps.extract.outputs.number }}" || echo "No changes to commit"
           git push
-
