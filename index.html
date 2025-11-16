@@ -13,5 +13,12 @@
   <script src="script.js"></script>
   <input type="text" id="searchBar" placeholder="Search...">
   <button onclick="performSearch()">Search</button>
+  <script>
+document.getElementById("searchBar").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        performSearch();
+    }
+});
+</script>
 </body>
 </html>
