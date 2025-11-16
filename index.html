@@ -1,83 +1,261 @@
-const repoOwner = "oamaru-communist-party";
-const repoName = "The-Red-Penguin-Archive";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Red Penguin Archive</title>
 
-async function fetchEntries() {
-    const apiURL = `https://api.github.com/repos/${repoOwner}/${repoName}/issues?state=open&per_page=100`;
-
-    try {
-        const response = await fetch(apiURL);
-        const issues = await response.json();
-
-        // Convert issues → entries
-        return issues.map(issue => {
-            const body = issue.body || "";
-            
-            // Extract Description:
-            const descMatch = body.match(/Description\s*\n(.+)/i);
-            const description = descMatch ? descMatch[1].trim() : "No description.";
-
-            // Extract Tags:
-            const tagMatch = body.match(/Tags\s*\n(.+)/i);
-            const tags = tagMatch ? tagMatch[1].split(",").map(t => t.trim()) : [];
-
-            return {
-                title: issue.title,
-                description,
-                tags,
-                link: issue.html_url
-            };
-        });
-
-    } catch (err) {
-        console.error("Error fetching entries:", err);
-        return [];
-    }
-}
-
-async function displayEntries(entries) {
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
-
-    if (entries.length === 0) {
-        resultsDiv.innerHTML = "<p>No entries found.</p>";
-        return;
+  <style>
+    :root{
+      --accent:#c62828;
+      --accent-dark:#8e0000;
+      --bg:#fffaf9;
+      --muted:#666;
+      --card:#ffffff;
+      --radius:12px;
+      --maxw:1000px;
     }
 
-    entries.forEach(entry => {
-        const card = document.createElement("div");
-        card.style.marginBottom = "20px";
-        card.style.padding = "10px";
-        card.style.border = "1px solid #ccc";
-        card.style.borderRadius = "8px";
+    html,body{
+      height:100%;
+      margin:0;
+      background:linear-gradient(180deg,#fff 0%, #f7f4f3 100%);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:#121212;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
 
-        card.innerHTML = `
-            <h2>${entry.title}</h2>
-            <p>${entry.description}</p>
-            <p><strong>Tags:</strong> ${entry.tags.join(", ")}</p>
-            <a href="${entry.link}" target="_blank">Open</a>
-        `;
+    .wrap{
+      max-width:var(--maxw);
+      margin:34px auto;
+      padding:24px;
+    }
 
-        resultsDiv.appendChild(card);
+    header.topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .brand {
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:56px;
+      height:56px;
+      border-radius:10px;
+      background:var(--accent);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-weight:700;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      transform:translateY(-1px);
+    }
+    .brand h1{
+      margin:0;
+      font-size:20px;
+      letter-spacing:0.2px;
+    }
+    .brand p{
+      margin:0;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    nav.actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    a.button {
+      background:var(--accent);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:600;
+      border:0;
+      display:inline-block;
+      box-shadow:0 6px 18px rgba(198,40,40,0.08);
+    }
+    a.button.secondary{
+      background:#fff;
+      color:var(--accent);
+      border:1px solid rgba(0,0,0,0.06);
+      font-weight:600;
+    }
+    a.button:hover{ background:var(--accent-dark); }
+
+    .search-area{
+      display:flex;
+      gap:10px;
+      margin:18px 0 26px 0;
+      align-items:center;
+    }
+
+    .search-input{
+      flex:1;
+      min-width:200px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    input#searchBar{
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.08);
+      background:var(--card);
+      font-size:15px;
+      outline:none;
+    }
+    button#searchBtn{
+      padding:10px 14px;
+      border-radius:10px;
+      border:0;
+      background:var(--accent);
+      color:#fff;
+      font-weight:700;
+    }
+
+    main.content{
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:22px;
+      align-items:start;
+    }
+
+    .results{
+      min-height:200px;
+    }
+
+    .card{
+      background:var(--card);
+      padding:14px;
+      border-radius:10px;
+      box-shadow: 0 8px 24px rgba(16,24,40,0.04);
+      margin-bottom:12px;
+    }
+
+    .entry-title{
+      margin:0 0 6px 0;
+      font-size:18px;
+    }
+    .entry-desc{
+      margin:0 0 8px 0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .entry-meta{
+      font-size:13px;
+      color:var(--muted);
+    }
+    .open-link{
+      display:inline-block;
+      margin-top:8px;
+      text-decoration:none;
+      color:var(--accent);
+      font-weight:600;
+    }
+
+    aside.sidebar{
+      position:relative;
+    }
+    .sidebar .card { position:sticky; top:20px; }
+
+    footer.sitefoot{
+      margin-top:28px;
+      color:var(--muted);
+      font-size:13px;
+      text-align:center;
+    }
+
+    /* responsiveness */
+    @media (max-width:900px){
+      main.content{
+        grid-template-columns: 1fr;
+      }
+      .logo{ width:48px; height:48px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">RP</div>
+        <div>
+          <h1>The Red Penguin Archive</h1>
+          <p>Public, free index of stories, files, and local memory</p>
+        </div>
+      </div>
+
+      <nav class="actions">
+        <!-- opens the issue form on GitHub -->
+        <a class="button" id="submit-btn" href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/new?template=archive-entry.yml" target="_blank" rel="noopener">Submit Entry</a>
+        <a class="button secondary" href="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/index.json" target="_blank" rel="noopener">Raw index</a>
+      </nav>
+    </header>
+
+    <div class="search-area">
+      <div class="search-input">
+        <input type="text" id="searchBar" placeholder="Search titles, descriptions, tags..." />
+      </div>
+      <button id="searchBtn">Search</button>
+    </div>
+
+    <main class="content">
+      <section class="results" id="results">
+        <!-- entries injected here -->
+      </section>
+
+      <aside class="sidebar">
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">About</h3>
+          <p style="margin:0 0 8px 0;color:var(--muted);font-size:14px;">
+            This site indexes public links and resources contributed by users. Files are hosted elsewhere.
+          </p>
+          <p style="margin:0;font-size:13px;color:var(--muted);">
+            Use the "Submit Entry" button to add material. Be mindful of laws in your country.
+          </p>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h4 style="margin:0 0 8px 0;">Recent entries</h4>
+          <div id="recent-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="sitefoot">
+      The Red Penguin Archive — an independent, volunteer project. No ads, no tracking.
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    // small wiring for search UI
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      performSearch();
     });
-}
+    document.getElementById('searchBar').addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') performSearch();
+    });
 
-let allEntries = [];
-
-// Search function
-async function performSearch() {
-    const query = document.getElementById("searchBar").value.toLowerCase();
-
-    const filtered = allEntries.filter(entry =>
-        entry.title.toLowerCase().includes(query) ||
-        entry.description.toLowerCase().includes(query) ||
-        entry.tags.join(" ").toLowerCase().includes(query)
-    );
-
-    displayEntries(filtered);
-}
-
-// Load entries when page loads
-window.onload = async () => {
-    allEntries = await fetchEntries();
-    displayEntries(allEntries);
-};
+    // load entries on open (script.js will expose a function)
+    if (typeof loadAndShowAll === 'function') {
+      loadAndShowAll();
+    }
+  </script>
+</body>
+</html>
