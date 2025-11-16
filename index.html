@@ -2,22 +2,27 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Archive Search</title>
+  <title>The Red Penguin Archive</title>
 </head>
 <body>
   <h1>The Red Penguin Archive</h1>
-  <input type="text" id="search" placeholder="Search..." oninput="searchArchive()">
+
+  <input type="text" id="searchBar" placeholder="Search...">
+
+  <button onclick="performSearch()">Search</button>
 
   <div id="results"></div>
 
   <script src="script.js"></script>
-  <button onclick="performSearch()">Search</button>
+
   <script>
-document.getElementById("searchBar").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        performSearch();
-    }
-});
-</script>
+    // Pressing ENTER triggers search
+    document.getElementById("searchBar").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            performSearch();
+        }
+    });
+  </script>
+
 </body>
 </html>
