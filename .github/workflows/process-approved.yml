@@ -4,85 +4,104 @@ on:
   issues:
     types: [labeled]
 
+permissions:
+  contents: write
+  issues: read
+
 jobs:
   add_to_index:
-    if: github.event.label.name == 'Approved'
+    # only run when the applied label name exactly equals "Approved"
+    if: ${{ github.event.label.name == 'Approved' }}
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      issues: read
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Extract issue data
         id: extract
-        shell: bash
         run: |
-          echo "title=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
-          echo "body=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
-          echo "number=$(jq -r '.issue.number' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          # convert the whole event to JSON and parse fields with jq
+          ISSUE_JSON='${{ toJson(github.event) }}'
+          TITLE=$(jq -r '.issue.title' <<< "$ISSUE_JSON")
+          BODY=$(jq -r '.issue.body' <<< "$ISSUE_JSON")
+          NUMBER=$(jq -r '.issue.number' <<< "$ISSUE_JSON")
 
-      - name: Create entry page
-        shell: bash
+          # expose as outputs for later steps
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+          echo "number=$NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Create entry page and update index.json
         run: |
+          set -euo pipefail
+
+          TITLE="${{ steps.extract.outputs.title }}"
+          BODY="${{ steps.extract.outputs.body }}"
+          NUMBER="${{ steps.extract.outputs.number }}"
+
           mkdir -p entries
 
-          cat << 'EOF' > entries/entry-${{ steps.extract.outputs.number }}.html
+          # create the entry HTML page (safe substitution via bash vars)
+          cat > "entries/entry-${NUMBER}.html" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>${{ steps.extract.outputs.title }}</title>
+  <meta charset="utf-8" />
+  <title>${TITLE}</title>
   <style>
-    body { font-family: Arial; margin: 40px; }
-    .banner { 
-      background: #c62828; 
-      color: white; 
-      padding: 15px; 
-      font-size: 20px;
-      margin-bottom: 30px;
-    }
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    .banner { background: #c62828; color: white; padding: 15px; font-size: 20px; margin-bottom: 30px; }
+    .entry { max-width: 820px; }
   </style>
 </head>
 <body>
   <div class="banner">The Red Penguin Archive — Entry</div>
 
-  <h1>${{ steps.extract.outputs.title }}</h1>
+  <div class="entry">
+    <h1>${TITLE}</h1>
+    <div>
+      <pre style="white-space: pre-wrap; font-family: inherit;">${BODY}</pre>
+    </div>
 
-  <p>${{ steps.extract.outputs.body }}</p>
-
-  <p><b>Issue Link:</b>
-    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/${{ steps.extract.outputs.number }}">
-      View Original Issue
-    </a>
-  </p>
-
+    <p><b>Original issue:</b>
+      <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/${NUMBER}">
+        View original issue #${NUMBER}
+      </a>
+    </p>
+  </div>
 </body>
 </html>
 EOF
 
-      - name: Append entry to index.json
-        shell: bash
-        run: |
-          page="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/entries/entry-${{ steps.extract.outputs.number }}.html"
+          # compute the public page URL that will exist under GitHub Pages
+          PAGE_URL="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/entries/entry-${NUMBER}.html"
 
-          entry=$(jq -n \
-            --arg title "${{ steps.extract.outputs.title }}" \
-            --arg description "${{ steps.extract.outputs.body }}" \
-            --arg link "$page" \
+          # create a JSON object for the index (jq produces a safe JSON value)
+          NEW_ENTRY=$(jq -n \
+            --arg title "$TITLE" \
+            --arg description "$BODY" \
+            --arg link "$PAGE_URL" \
             '{title: $title, description: $description, tags: [], link: $link}')
 
-          jq ". + [${entry}]" index.json > new.json
-          mv new.json index.json
+          # ensure index.json exists and is valid array; if not, create a new one
+          if [ ! -f index.json ] || ! jq -e . >/dev/null 2>&1 < index.json; then
+            echo "[]" > index.json
+          fi
 
-      - name: Commit update
-        shell: bash
+          # append the new entry to the array in index.json
+          jq ". + [ $NEW_ENTRY ]" index.json > index_new.json
+          mv index_new.json index.json
+
+      - name: Commit and push changes
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add entries index.json
-          git commit -m "Add approved entry: #${{ steps.extract.outputs.number }}" || echo "No changes to commit"
-          git push
+          # if nothing changed, skip commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add approved entry from issue #${{ steps.extract.outputs.number }}"
+            git push
+          fi
