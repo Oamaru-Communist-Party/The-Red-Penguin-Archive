@@ -11,6 +11,9 @@ function performSearch() {
             );
 
             displayResults(results);
+        })
+        .catch(error => {
+            console.error("Error loading JSON:", error);
         });
 }
 
