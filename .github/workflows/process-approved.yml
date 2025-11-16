@@ -17,30 +17,68 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Build entry JSON safely
-        id: entry
+      - name: Extract issue data
+        id: extract
         run: |
-          title="${{ github.event.issue.title }}"
-          body="${{ github.event.issue.body }}"
-          url="${{ github.event.issue.html_url }}"
+          echo "title=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "body=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "number=$(jq -r '.issue.number' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
 
-          # Build JSON entry safely using jq — no shell escaping problems
-          echo "$(jq -n \
-            --arg title "$title" \
-            --arg description "$body" \
-            --arg link "$url" \
-            '{title: $title, description: $description, tags: [], link: $link}')" \
-            > entry.json
+      - name: Create entry page
+        run: |
+          mkdir -p entries
+
+          cat > entries/entry-${{ steps.extract.outputs.number }}.html << EOF
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${{ steps.extract.outputs.title }}</title>
+  <style>
+    body { font-family: Arial; margin: 40px; }
+    .banner { 
+      background: #c62828; 
+      color: white; 
+      padding: 15px; 
+      font-size: 20px;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">The Red Penguin Archive — Entry</div>
+
+  <h1>${{ steps.extract.outputs.title }}</h1>
+
+  <p>${{ steps.extract.outputs.body }}</p>
+
+  <p><b>Issue Link:</b>
+    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/${{ steps.extract.outputs.number }}">
+      View Original Issue
+    </a>
+  </p>
+
+</body>
+</html>
+EOF
 
       - name: Append entry to index.json
         run: |
-          jq ". + [$(cat entry.json)]" index.json > new.json
+          page="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/entries/entry-${{ steps.extract.outputs.number }}.html"
+
+          entry=$(jq -n \
+            --arg title "${{ steps.extract.outputs.title }}" \
+            --arg description "${{ steps.extract.outputs.body }}" \
+            --arg link "$page" \
+            '{title: $title, description: $description, tags: [], link: $link}')
+
+          jq ". + [${entry}]" index.json > new.json
           mv new.json index.json
 
       - name: Commit update
         run: |
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
-          git add index.json
-          git commit -m "Add approved submission: ${{ github.event.issue.title }}" || echo "No changes"
+          git add entries index.json
+          git commit -m "Add approved entry: #${{ steps.extract.outputs.number }}"
           git push
