@@ -1,33 +1,49 @@
-<style>
-  #submit-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: #c62828;
-    color: white;
-    padding: 10px 16px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: bold;
-  }
-  #submit-btn:hover {
-    background: #8e0000;
-  }
-</style>
-
-<a id="submit-btn" 
-   href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/new?template=archive-entry.yml">
-  Submit Entry
-</a>
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>The Red Penguin Archive</title>
+
+  <style>
+    /* Submit Button */
+    #submit-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #c62828;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    #submit-btn:hover {
+      background: #8e0000;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    #searchBar {
+      width: 300px;
+      padding: 8px;
+    }
+  </style>
 </head>
+
 <body>
+
+  <!-- Top-right submission button -->
+  <a id="submit-btn" 
+     href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/new?template=archive-entry.yml">
+    Submit Entry
+  </a>
+
   <h1>The Red Penguin Archive</h1>
 
+  <!-- Search Bar -->
   <input type="text" id="searchBar" placeholder="Search...">
   <button onclick="performSearch()">Search</button>
 
@@ -43,16 +59,6 @@
         }
     });
   </script>
+
 </body>
 </html>
-<h2>Submit a New Archive Entry</h2>
-
-<form action="https://github.com/{{your user}}/{{your repo}}/issues/new" method="get" target="_blank">
-  <input type="hidden" name="title" value="New Submission">
-
-  <label>Description:</label><br>
-  <textarea name="body" rows="6" cols="50"
-    placeholder="Write details here..."></textarea><br><br>
-
-  <button type="submit">Submit to Archive</button>
-</form>
