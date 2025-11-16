@@ -1,0 +1,45 @@
+name: Process Approved Submissions
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  add_to_index:
+    if: github.event.label.name == 'approved'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Extract issue data
+        id: extract
+        run: |
+          echo "title=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "body=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "url=$(jq -r '.issue.html_url' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+
+      - name: Append entry to index.json
+        run: |
+          entry=$(jq -n \
+            --arg title "${{ steps.extract.outputs.title }}" \
+            --arg description "${{ steps.extract.outputs.body }}" \
+            --arg link "${{ steps.extract.outputs.url }}" \
+            '{title: $title, description: $description, tags: [], link: $link}')
+
+          # Append to index.json
+          jq ". + [${entry}]" index.json > new.json
+          mv new.json index.json
+
+      - name: Commit update
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
+          git add index.json
+          git commit -m "Add approved submission: ${{ steps.extract.outputs.title }}"
+          git push
