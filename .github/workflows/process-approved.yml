@@ -27,12 +27,13 @@ jobs:
       - name: Create entry page
         run: |
           mkdir -p entries
+
           cat > entries/entry-${{ steps.extract.outputs.number }}.html << 'EOF'
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${{ steps.extract.outputs.title }}</title>
+  <title>{{TITLE}}</title>
   <style>
     body { font-family: Arial; margin: 40px; }
     .banner { 
@@ -47,18 +48,24 @@ jobs:
 <body>
   <div class="banner">The Red Penguin Archive — Entry</div>
 
-  <h1>${{ steps.extract.outputs.title }}</h1>
+  <h1>{{TITLE}}</h1>
 
-  <p>${{ steps.extract.outputs.body }}</p>
+  <p>{{BODY}}</p>
 
   <p><b>Issue Link:</b>
-    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/${{ steps.extract.outputs.number }}">
+    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/{{NUMBER}}">
       View Original Issue
     </a>
   </p>
+
 </body>
 </html>
 EOF
+
+          # Replace placeholders
+          sed -i "s/{{TITLE}}/${{ steps.extract.outputs.title }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
+          sed -i "s/{{BODY}}/${{ steps.extract.outputs.body }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
+          sed -i "s/{{NUMBER}}/${{ steps.extract.outputs.number }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
 
       - name: Append entry to index.json
         run: |
