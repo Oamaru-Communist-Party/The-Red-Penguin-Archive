@@ -1,0 +1,39 @@
+name: "Archive Entry Submission"
+description: "Submit a new file, story, or entry to the Red Penguin Archive"
+title: "New Archive Entry: <TITLE>"
+labels: ["submission"]
+
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: "Name of the entry"
+      placeholder: "Example: The Lost Story of John Doe"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: "Explain the content, context, or story."
+    validations:
+      required: true
+
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      placeholder: "history, folklore, memory, 1990s"
+    validations:
+      required: false
+
+  - type: input
+    id: link
+    attributes:
+      label: File link (optional)
+      description: "Link to a file stored elsewhere (Google Drive, etc)."
+      placeholder: "https://example.com/file"
+    validations:
+      required: false
