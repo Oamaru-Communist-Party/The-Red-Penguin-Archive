@@ -6,7 +6,7 @@ on:
 
 jobs:
   add_to_index:
-    if: github.event.label.name == 'approved'
+    if: ${{ github.event.label.name == 'approved' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -15,27 +15,43 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Extract issue data
-        id: extract
+      - name: Read issue fields into variables
+        id: read
         run: |
-          echo "title=$(jq -r '.issue.title' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
-          echo "body=$(jq -r '.issue.body' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
-          echo "number=$(jq -r '.issue.number' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          TITLE="${{ github.event.issue.title }}"
+          BODY="${{ github.event.issue.body }}"
+          NUMBER="${{ github.event.issue.number }}"
+          echo "TITLE<<EOF" >> $GITHUB_OUTPUT
+          echo "${TITLE}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "${BODY}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "NUMBER=${NUMBER}" >> $GITHUB_OUTPUT
 
-      - name: Create entry page
+      - name: Create entry page and update index.json
         run: |
+          set -e
+
+          # prepare variables
+          TITLE=$(jq -R -r . <<< "${{ steps.read.outputs.TITLE }}")
+          BODY=$(jq -R -r . <<< "${{ steps.read.outputs.BODY }}")
+          NUMBER="${{ steps.read.outputs.NUMBER }}"
+
+          # ensure folder
           mkdir -p entries
 
-          cat > entries/entry-${{ steps.extract.outputs.number }}.html << 'EOF'
+          # create HTML page (note: EOF must be at start of line)
+          cat > "entries/entry-${NUMBER}.html" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>{{TITLE}}</title>
+  <title>${TITLE}</title>
   <style>
-    body { font-family: Arial; margin: 40px; }
+    body { font-family: Arial, sans-serif; margin: 40px; }
     .banner { 
       background: #c62828; 
       color: white; 
@@ -48,12 +64,14 @@ jobs:
 <body>
   <div class="banner">The Red Penguin Archive — Entry</div>
 
-  <h1>{{TITLE}}</h1>
+  <h1>${TITLE}</h1>
 
-  <p>{{BODY}}</p>
+  <div>
+${BODY}
+  </div>
 
-  <p><b>Issue Link:</b>
-    <a href="https://github.com/oamaru-communist-party/The-Red-Penguin-Archive/issues/{{NUMBER}}">
+  <p><b>Original Issue:</b>
+    <a href="https://github.com/${{ github.repository }}/issues/${NUMBER}">
       View Original Issue
     </a>
   </p>
@@ -62,28 +80,33 @@ jobs:
 </html>
 EOF
 
-          # Replace placeholders
-          sed -i "s/{{TITLE}}/${{ steps.extract.outputs.title }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
-          sed -i "s/{{BODY}}/${{ steps.extract.outputs.body }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
-          sed -i "s/{{NUMBER}}/${{ steps.extract.outputs.number }}/g" entries/entry-${{ steps.extract.outputs.number }}.html
+          # create or update index.json by appending the new entry
+          PAGE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/entries/entry-${NUMBER}.html"
 
-      - name: Append entry to index.json
-        run: |
-          page="https://oamaru-communist-party.github.io/The-Red-Penguin-Archive/entries/entry-${{ steps.extract.outputs.number }}.html"
-
-          entry=$(jq -n \
-            --arg title "${{ steps.extract.outputs.title }}" \
-            --arg description "${{ steps.extract.outputs.body }}" \
-            --arg link "$page" \
+          # Build a JSON object for the entry
+          ENTRY_JSON=$(jq -n \
+            --arg title "$TITLE" \
+            --arg description "$BODY" \
+            --arg link "$PAGE_URL" \
             '{title: $title, description: $description, tags: [], link: $link}')
 
-          jq ". + [${entry}]" index.json > new.json
-          mv new.json index.json
+          # Ensure index.json exists and is an array; if not, create one
+          if [ ! -f index.json ] || ! jq -e . index.json >/dev/null 2>&1; then
+            echo '[]' > index.json
+          fi
 
-      - name: Commit update
+          jq ". + [${ENTRY_JSON}]" index.json > index_new.json
+          mv index_new.json index.json
+
+      - name: Commit and push changes
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add entries index.json
-          git commit -m "Add approved entry: #${{ steps.extract.outputs.number }}"
-          git push
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Add approved entry: #${{ steps.read.outputs.NUMBER }} - ${{ steps.read.outputs.TITLE }}"
+            git push
+          fi
